@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mk. 17 | SEM Simulator</title>
+<style>
+:root{color-scheme:dark;--bg:#08111d;--panel:#122337;--line:#2b435b;--text:#e8f1fb;--muted:#a7bbcf;--cyan:#55d7ed;--yellow:#ffd166;--purple:#b99aff;--green:#80ed99}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:radial-gradient(circle at 50% -20%,#1a344d 0,#08111d 58%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR",sans-serif}
+main{max-width:1300px;margin:auto}
+header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+h1{font-size:clamp(26px,4vw,36px);letter-spacing:2px;margin:0;color:#65d5ff}
+.subtitle{font-size:13px;color:var(--muted);margin-top:4px}
+.layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);gap:16px}
+.panel{background:linear-gradient(160deg,#14283d,#0e1b2b);border:1px solid var(--line);border-radius:15px;padding:15px;box-shadow:0 14px 35px #0004;min-width:0;margin-bottom:16px}
+.panel h2{font-size:15px;margin:0 0 11px;color:#d5e8f8}
+.canvas-wrap{width:100%;overflow:hidden;border-radius:9px;background:transparent;border:1px solid #22384d}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+#scene{aspect-ratio:900/520}
+#result{aspect-ratio:4/3}
+#shapeCanvas{aspect-ratio:4/3;background:#071018}
+.legend{display:flex;flex-wrap:wrap;gap:13px;color:var(--muted);font-size:11px;margin-top:10px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.controls{display:grid;grid-template-columns:1fr;gap:14px}
+.control label{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#c9d9e8;margin-bottom:6px}
+input[type=range],select,input[type=text]{width:100%;accent-color:var(--cyan)}
+select,input[type=text]{background:#0b1725;color:var(--text);border:1px solid #36506a;border-radius:8px;padding:8px}
+#customText,#shapeEditor{display:none}
+.shape-tools{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.shape-tools button{flex:1;min-width:70px;padding:8px;font-size:12px}
+.buttons{display:flex;gap:8px;margin-top:16px}
+button{flex:1;border:0;border-radius:9px;padding:10px 12px;font-weight:700;cursor:pointer;background:#1d3c56;color:#dff3ff}
+button:hover{background:#26506f}
+button.primary{background:linear-gradient(135deg,#1d7fa8,#39b7d8);color:#031018}
+button.warn{background:#4a3a20;color:#ffd166}
+.progress{height:7px;background:#0b1725;border-radius:99px;overflow:hidden;margin-top:12px}
+#bar{height:100%;width:0;background:linear-gradient(90deg,#39b7d8,#80ed99)}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;font-size:11px;color:var(--muted)}
+.readout div{background:#0b1725;border:1px solid #24384c;border-radius:8px;padding:7px}
+.readout b{display:block;color:#eaf6ff;font-size:13px;margin-top:2px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div>
+  <h1>Mk. 17</h1>
+  <div class="subtitle">Scanning Electron Microscope&nbsp;&nbsp;10616 소예준</div>
+ </div>
+</header>
+
+<section class="panel">
+ <h2>① SEM 내부 작동 과정 및 전자 이동</h2>
+ <div class="canvas-wrap"><canvas id="scene" width="900" height="520"></canvas></div>
+ <div class="legend">
+  <span><i class="dot" style="background:#55d7ed"></i>1차 전자</span>
+  <span><i class="dot" style="background:#ff9f43"></i>2차 전자</span>
+  <span><i class="dot" style="background:#b99aff"></i>검출기</span>
+ </div>
+</section>
+
+<div class="layout">
+ <section class="panel">
+  <h2>② SEM 이미지</h2>
+  <div class="canvas-wrap"><canvas id="result" width="720" height="540"></canvas></div>
+  <div class="progress"><div id="bar"></div></div>
+  <div class="readout">
+   <div>진행률<b id="progressText">0%</b></div>
+   <div>스캔 픽셀<b id="countText">0</b></div>
+   <div>현재 신호<b id="signalText">—</b></div>
+  </div>
+ </section>
+
+ <section class="panel">
+  <h2>③ 실험 조건 설정</h2>
+  <div class="controls">
+   <div class="control">
+    <label for="sample">시료 종류</label>
+    <select id="sample">
+     <option value="cnt">탄소나노튜브(CNT) 다발</option>
+     <option value="graphene">그래핀(Graphene) 플레이크</option>
+     <option value="nanofiber">탄소 나노섬유 매트</option>
+     <option value="mxene">MXene 적층 구조</option>
+     <option value="silica">실리카 나노입자</option>
+     <option value="electrospun">전기방사 나노섬유</option>
+     <option value="zno">ZnO 나노로드</option>
+     <option value="porous">다공성 세라믹</option>
+     <option value="goldcarbon">금 나노입자/탄소 지지체</option>
+     <option value="clay">점토 판상 입자</option>
+     <option value="nanowire">산화물 나노와이어</option>
+     <option value="soyejun">소예준</option>
+     <option value="custom">?</option>
+     <option value="shapes">??</option>
+    </select>
+   </div>
+   <div class="control" id="customText">
+    <label for="customInput">만들고 싶은 글씨 <span id="charCount">0 / 8자</span></label>
+    <input id="customInput" type="text" maxlength="8" placeholder="예: 소예준">
+   </div>
+   <div class="control" id="shapeEditor">
+    <label>도형을 드래그하면 SEM 이미지에 바로 반영됩니다</label>
+    <div class="canvas-wrap"><canvas id="shapeCanvas" width="360" height="270"></canvas></div>
+    <div class="shape-tools">
+     <button data-shape="rect">사각형</button>
+     <button data-shape="triangle">삼각형</button>
+     <button data-shape="circle">원</button>
+     <button id="deleteShape">삭제</button>
+     <button id="analyzeShapes" class="warn">배치 분석</button>
+    </div>
+   </div>
+   <div class="control">
+    <label for="speed">주사 속도 <span id="speedVal">적정 · 5</span></label>
+    <input id="speed" type="range" min="1" max="20" value="5">
+   </div>
+   <div class="control">
+    <label for="eff">검출 효율 <span id="effVal">80%</span></label>
+    <input id="eff" type="range" min="20" max="140" value="80">
+   </div>
+  </div>
+  <div class="buttons">
+   <button id="start" class="primary">주사 시작</button>
+   <button id="pause">일시정지</button>
+   <button id="reset">초기화</button>
+   <button id="newSample">새 시료</button>
+   <button id="save">PNG 저장</button>
+  </div>
+ </section>
+</div>
+</main>
+
+<script>
+"use strict";
+const scene=document.getElementById("scene"),ctx=scene.getContext("2d");
+const result=document.getElementById("result"),rctx=result.getContext("2d");
+const shapeCanvas=document.getElementById("shapeCanvas"),sctx=shapeCanvas.getContext("2d");
+const W=180,H=135,TOTAL=W*H;
+const SAMPLE={x:205,y:260,w:560,h:155};
+const GUN={x:145,y:115},DETECTOR={x:760,y:105};
+let heights=new Float32Array(TOTAL),signals=new Float32Array(TOTAL),brightness=new Uint8Array(TOTAL);
+let index=0,running=false,raf=0,lastTime=0,scanAccumulator=0,currentSignal=0,secondaryParticle=null;
+let speed=5,efficiency=.8,sampleType="cnt",sampleSeed=0,textMap=null,customText="";
+let shapes=[],selectedShape=-1,dragging=false,dragOffset={x:0,y:0};
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function capsuleDistance(x,y,x1,y1,x2,y2){
+ const dx=x2-x1,dy=y2-y1,t=clamp(((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy),0,1);
+ return Math.hypot(x-(x1+t*dx),y-(y1+t*dy));
+}
+function centerMap(m){
+ let minX=W,maxX=-1,minY=H,maxY=-1;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  if(m[y*W+x]>.06){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}
+ }
+ if(maxX<0)return m;
+ const cx=(minX+maxX)/2,cy=(minY+maxY)/2,dx=Math.round(W/2-cx),dy=Math.round(H/2-cy);
+ const out=new Float32Array(W*H);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  out[y*W+x]=m[clamp(y-dy,0,H-1)*W+clamp(x-dx,0,W-1)];
+ }
+ return out;
+}
+function makeTextMap(text){
+ const chars=[...text];
+ const c=document.createElement("canvas");c.width=W;c.height=H;
+ const t=c.getContext("2d",{willReadFrequently:true});
+ t.fillStyle="#000";t.fillRect(0,0,W,H);
+ t.textAlign="center";t.textBaseline="middle";
+ let size=64;
+ t.font=`bold ${size}px "Noto Sans KR","Malgun Gothic",system-ui,sans-serif`;
+ const widths=chars.map(ch=>t.measureText(ch).width);
+ const gap=size*.08;
+ let totalWidth=widths.reduce((a,b)=>a+b,0)+gap*Math.max(0,chars.length-1);
+ while(totalWidth>W*.90&&size>14){
+  size-=3;
+  t.font=`bold ${size}px "Noto Sans KR","Malgun Gothic",system-ui,sans-serif`;
+  for(let i=0;i<chars.length;i++)widths[i]=t.measureText(chars[i]).width;
+  totalWidth=widths.reduce((a,b)=>a+b,0)+gap*Math.max(0,chars.length-1);
+ }
+ let cursor=W/2-totalWidth/2;
+ for(let i=0;i<chars.length;i++){
+  const ch=chars[i],cw=widths[i];
+  const r1=(Math.sin((i+1)*12.9898+sampleSeed*3.7)*43758.5453)%1;
+  const r2=(Math.sin((i+1)*78.233+sampleSeed*5.1)*24634.6345)%1;
+  const cy=H/2+(r1-.5)*size*.26;
+  const angle=(r2-.5)*.24;
+  t.save();t.translate(cursor+cw/2,cy);t.rotate(angle);
+  t.fillStyle="#fff";t.fillText(ch,0,0);t.restore();
+  cursor+=cw+gap;
+ }
+ return centerMap(canvasToMap(c));
+}
+function canvasToMap(c){
+ const t=c.getContext("2d",{willReadFrequently:true});
+ const d=t.getImageData(0,0,W,H).data,m=new Float32Array(W*H);
+ for(let i=0;i<W*H;i++)m[i]=d[i*4]/255;
+ const out=new Float32Array(W*H);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  let sum=0,n=0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+   sum+=m[clamp(y+dy,0,H-1)*W+clamp(x+dx,0,W-1)];n++;
+  }
+  out[y*W+x]=sum/n;
+ }
+ return out;
+}
+function makeShapeMap(){
+ const c=document.createElement("canvas");c.width=W;c.height=H;
+ const t=c.getContext("2d",{willReadFrequently:true});
+ t.fillStyle="#000";t.fillRect(0,0,W,H);
+ t.fillStyle="#fff";
+ const ew=shapeCanvas.width,eh=shapeCanvas.height;
+ for(const s of shapes){
+  const x=s.x/ew*W,y=s.y/eh*H,w=s.w/ew*W,h=s.h/eh*H;
+  t.save();t.translate(x,y);t.rotate(s.rot);
+  if(s.type==="rect")t.fillRect(-w/2,-h/2,w,h);
+  else if(s.type==="circle"){t.beginPath();t.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);t.fill();}
+  else{t.beginPath();t.moveTo(0,-h/2);t.lineTo(w/2,h/2);t.lineTo(-w/2,h/2);t.closePath();t.fill();}
+  t.restore();
+ }
+ return centerMap(canvasToMap(c));
+}
+function buildSample(){
+ heights.fill(0);signals.fill(0);brightness.fill(0);
+ const wobble=sampleSeed*.37;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  const u=x/W,v=y/H;let h=0;
+  if(sampleType==="cnt"){
+   for(let k=-2;k<=2;k++){
+    h+=.66*Math.exp(-Math.pow((v-(.25+k*.115+.025*Math.sin(u*13+k+wobble)))/.027,2));
+    h+=.48*Math.exp(-Math.pow((u-(.16+k*.16+.025*Math.sin(v*14+k+wobble)))/.019,2));
+   }
+   for(let k=0;k<4;k++)h+=.23*Math.exp(-Math.pow(capsuleDistance(u,v,.12,.18+k*.19,.88,.30+k*.14)/.018,2));
+  }else if(sampleType==="graphene"){
+   for(const [cx,cy,rx,ry] of [[.25,.30,.24,.18],[.66,.34,.27,.19],[.43,.73,.31,.17],[.83,.76,.13,.12]]){
+    const q=((u-cx)/rx)**2+((v-cy)/ry)**2;
+    if(q<1)h+=.22+.22*Math.exp(-Math.pow((q-.83)/.09,2));
+   }
+   h+=.055*Math.sin(u*34+v*9+wobble)*Math.sin(v*28);
+  }else if(sampleType==="nanofiber"){
+   for(let k=0;k<8;k++){
+    h+=.52*Math.exp(-Math.pow((v-(.09+k*.115+.035*Math.sin(u*11+k*.7+wobble)))/.022,2));
+    h+=.43*Math.exp(-Math.pow((u-(.08+k*.12+.04*Math.sin(v*10+k+wobble)))/.019,2));
+   }
+  }else if(sampleType==="mxene"){
+   for(const [cx,cy,rx,ry] of [[.23,.27,.22,.18],[.61,.32,.29,.21],[.40,.72,.32,.19],[.82,.76,.15,.13]]){
+    const q=Math.max(Math.abs((u-cx)/rx),Math.abs((v-cy)/ry));
+    if(q<1)h+=.17+Math.floor((1-q)*5)*.075;
+   }
+  }else if(sampleType==="silica"){
+   for(let j=0;j<7;j++)for(let i=0;i<10;i++){
+    const cx=.035+i*.105+(j%2)*.052+.009*Math.sin(i*2.1+j+wobble);
+    const cy=.08+j*.145+.008*Math.cos(i+j*1.7+wobble);
+    const rad=.040+.006*Math.sin(i*3+j*2),r=Math.hypot(u-cx,v-cy);
+    h+=.62*Math.exp(-Math.pow(r/rad,4))+.10*Math.exp(-Math.pow(r/(rad*1.45),2));
+   }
+  }else if(sampleType==="electrospun"){
+   for(let k=0;k<19;k++){
+    const x1=.02+((k*.173+wobble*.07)%.96),y1=.04+((k*.317+wobble*.11)%.92);
+    const a=k*2.399+wobble*.13,len=.42+.28*((k*7%11)/10);
+    const d=capsuleDistance(u,v,x1,y1,clamp(x1+Math.cos(a)*len,0,1),clamp(y1+Math.sin(a)*len,0,1));
+    h+=.42*Math.exp(-Math.pow(d/(.009+.004*((k*5%7)/6)),2));
+   }
+  }else if(sampleType==="zno"){
+   for(let j=0;j<5;j++)for(let i=0;i<8;i++){
+    const cx=.08+i*.12+(j%2)*.055+.012*Math.sin(i+j+wobble);
+    const cy=.12+j*.19+.01*Math.cos(i*1.4+j+wobble);
+    const dx=Math.abs(u-cx),dy=Math.abs(v-cy),hex=Math.max(dx*.92+dy*.52,dy);
+    h+=.72*Math.exp(-Math.pow(hex/.043,4))+.12*Math.exp(-Math.pow(Math.hypot(dx,dy)/.065,2));
+   }
+  }else if(sampleType==="porous"){
+   for(let j=0;j<6;j++)for(let i=0;i<9;i++){
+    const cx=.06+i*.112+(j%2)*.05+.012*Math.sin(j*2+i+wobble);
+    const cy=.08+j*.17+.014*Math.cos(i*1.3+j+wobble);
+    h+=.43*Math.exp(-Math.pow(Math.hypot(u-cx,v-cy)/.073,2));
+   }
+   for(let k=0;k<13;k++){
+    const cx=((k*.271+wobble*.03)%.9)+.04,cy=((k*.419+wobble*.05)%.88)+.04;
+    h-=.20*Math.exp(-Math.pow(Math.hypot(u-cx,v-cy)/.035,2));
+   }
+  }else if(sampleType==="goldcarbon"){
+   for(let k=0;k<58;k++){
+    const cx=.035+((k*.6180339+wobble*.017)%.93),cy=.035+((k*.4142135+wobble*.023)%.93);
+    const rad=.009+.008*((k*7%13)/12);
+    h+=.78*Math.exp(-Math.pow(Math.hypot(u-cx,v-cy)/rad,2));
+   }
+   h+=.09*(Math.sin(u*42+v*17+wobble)+Math.cos(v*37-u*13));
+  }else if(sampleType==="clay"){
+   for(let k=0;k<11;k++){
+    const cx=.08+((k*.317+wobble*.02)%.82),cy=.08+((k*.571+wobble*.03)%.82);
+    const a=k*1.17+wobble*.1,rx=.11+.05*(k%3),ry=.045+.025*(k%4);
+    const du=u-cx,dv=v-cy;
+    const xx=du*Math.cos(a)+dv*Math.sin(a),yy=-du*Math.sin(a)+dv*Math.cos(a);
+    const q=Math.pow(xx/rx,2)+Math.pow(yy/ry,2);
+    if(q<1)h+=.20+.22*Math.exp(-Math.pow((q-.88)/.08,2));
+   }
+   h+=.035*Math.sin(u*54+v*13+wobble)*Math.sin(v*31-u*9);
+  }else if(sampleType==="nanowire"){
+   for(let k=0;k<12;k++){
+    const x1=.02+((k*.191+wobble*.04)%.95),y1=.02+((k*.367+wobble*.03)%.95);
+    const a=(k%4-1.5)*.24+(k%3)*.09,len=.62+.25*(k%4)/3;
+    const d=capsuleDistance(u,v,x1,y1,clamp(x1+Math.cos(a)*len,0,1),clamp(y1+Math.sin(a)*len,0,1));
+    h+=.48*Math.exp(-Math.pow(d/(.008+.002*(k%3)),2));
+   }
+  }else if(sampleType==="soyejun"){
+   if(!textMap)textMap=makeTextMap("소예준");
+   h=textHeight(textMap,x,y,u,v,wobble);
+  }else if(sampleType==="custom"){
+   if(!textMap)textMap=makeTextMap(customText||"?");
+   h=textHeight(textMap,x,y,u,v,wobble);
+  }else if(sampleType==="shapes"){
+   if(!textMap)textMap=makeShapeMap();
+   h=textHeight(textMap,x,y,u,v,wobble);
+  }
+  h+=.012*(Math.sin(x*.73+y*.21+wobble)+Math.cos(y*.61-x*.18));
+  heights[y*W+x]=h;
+ }
+ calculateSignals();drawScene();clearResult();
+}
+function textHeight(m,x,y,u,v,wobble){
+ const base=m[y*W+x];
+ const gx=m[y*W+clamp(x+1,0,W-1)]-m[y*W+clamp(x-1,0,W-1)];
+ const gy=m[clamp(y+1,0,H-1)*W+x]-m[clamp(y-1,0,H-1)*W+x];
+ const edge=Math.hypot(gx,gy);
+ let h=base*1.05;
+ h+=.55*Math.exp(-Math.pow(edge/.62,2));
+ h+=.14*base*Math.sin(u*95+v*31+wobble);
+ const p=Math.sin(x*12.9898+y*78.233+wobble)*43758.5453,rnd=p-Math.floor(p);
+ if(base>.55&&rnd>.965)h+=.35+rnd*.3;
+ return h;
+}
+const heightAt=(x,y)=>heights[clamp(y,0,H-1)*W+clamp(x,0,W-1)];
+function getNormal(x,y){
+ const dx=(heightAt(x+1,y)-heightAt(x-1,y))*4,dy=(heightAt(x,y+1)-heightAt(x,y-1))*4;
+ const len=Math.hypot(dx,dy,1);
+ return{x:-dx/len,y:-dy/len,z:1/len};
+}
+function getSignal(x,y){
+ const n=getNormal(x,y),facing=Math.max(.08,n.x*.72+n.y*-.38+n.z*.58);
+ const slope=Math.hypot(n.x,n.y);
+ const yields={cnt:1.02,graphene:.94,nanofiber:1.08,mxene:1.15,silica:.88,electrospun:.96,zno:1.12,porous:1.04,goldcarbon:1.20,clay:.92,nanowire:1.10,soyejun:1.08,custom:1.08,shapes:1.08};
+ return Math.max(0,yields[sampleType]*facing*(1+slope*.85)*(1+heightAt(x,y)*.16)*efficiency);
+}
+function calculateSignals(){
+ let
